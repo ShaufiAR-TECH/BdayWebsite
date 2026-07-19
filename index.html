@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Happy Birthday</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.2/confetti.browser.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #0c0a09;
+    --pink: 333, 70%, 55%;
+    --purple: 282, 82%, 54%;
+    --blue: 210, 89%, 60%;
+    --gold: 35, 90%, 60%;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin:0; padding:0; height:100%;
+    background: var(--bg);
+    overflow-x: hidden;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  /* Since Satoshi isn't on Google Fonts CDN, Plus Jakarta Sans is used as the closest
+     clean, modern geometric sans-serif substitute with the same warm humanist feel. */
+
+  h1, h2, .font-display { font-family: 'Playfair Display', serif; }
+
+  #bg-aurora {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  #bg-aurora::before, #bg-aurora::after, #bg-aurora .blob {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    will-change: transform, opacity;
+  }
+
+  .aurora-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+    mix-blend-mode: screen;
+  }
+
+  .blob-1 { width: 60vw; height: 60vw; top: -10%; left: -10%; background: radial-gradient(circle, hsla(var(--pink), .4), transparent 70%); animation: drift1 22s ease-in-out infinite; }
+  .blob-2 { width: 55vw; height: 55vw; top: 20%; right: -15%; background: radial-gradient(circle, hsla(var(--purple), .3), transparent 70%); animation: drift2 26s ease-in-out infinite; }
+  .blob-3 { width: 50vw; height: 50vw; bottom: -15%; left: 15%; background: radial-gradient(circle, hsla(var(--blue), .3), transparent 70%); animation: drift3 30s ease-in-out infinite; }
+  .blob-4 { width: 45vw; height: 45vw; bottom: 5%; right: 10%; background: radial-gradient(circle, hsla(var(--gold), .3), transparent 70%); animation: drift4 24s ease-in-out infinite; }
+
+  @keyframes drift1 {
+    0%, 100% { transform: translate(0,0) scale(1); opacity: .8; }
+    50% { transform: translate(8vw, 6vh) scale(1.15); opacity: 1; }
+  }
+  @keyframes drift2 {
+    0%, 100% { transform: translate(0,0) scale(1); opacity: .7; }
+    50% { transform: translate(-6vw, 8vh) scale(1.1); opacity: .95; }
+  }
+  @keyframes drift3 {
+    0%, 100% { transform: translate(0,0) scale(1); opacity: .75; }
+    50% { transform: translate(5vw, -7vh) scale(1.12); opacity: 1; }
+  }
+  @keyframes drift4 {
+    0%, 100% { transform: translate(0,0) scale(1); opacity: .7; }
+    50% { transform: translate(-7vw, -5vh) scale(1.08); opacity: .95; }
+  }
+
+  #hearts-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  #app {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  /* progress bar */
+  #progress-wrap {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(420px, 80vw);
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.12);
+    z-index: 20;
+    overflow: hidden;
+  }
+  #progress-bar {
+    height: 100%;
+    width: 20%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, hsl(var(--pink)), #ef4444);
+    transition: width .7s cubic-bezier(.65,0,.35,1);
+  }
+
+  .card {
+    width: min(640px, 92vw);
+    background: rgba(20, 14, 18, 0.45);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 28px;
+    padding: clamp(28px, 5vw, 56px);
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02) inset;
+    text-align: center;
+    position: relative;
+  }
+
+  .step { display: none; }
+  .step.active { display: block; }
+
+  .grad-text {
+    background: linear-gradient(90deg, #fff, #ffd7e6 45%, hsl(var(--pink)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .body-text {
+    color: #e6e1e6;
+    opacity: .85;
+    line-height: 1.7;
+  }
+
+  .icon-emoji {
+    font-size: clamp(56px, 12vw, 84px);
+    display: inline-block;
+    line-height: 1;
+  }
+
+  .beat { animation: beat 1.8s ease-in-out infinite; filter: drop-shadow(0 0 24px hsla(var(--pink), .8)); }
+  @keyframes beat {
+    0%, 100% { transform: scale(1); }
+    15% { transform: scale(1.15); }
+    30% { transform: scale(0.98); }
+    45% { transform: scale(1.1); }
+    60% { transform: scale(1); }
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 14px 36px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, hsl(var(--pink)), #ef4444);
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 0 0px rgba(236, 72, 130, 0.6);
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 40px -6px hsla(var(--pink), .8), 0 0 30px hsla(var(--pink), .5);
+  }
+  .btn:active {
+    transform: translateY(0) scale(0.97);
+    box-shadow: 0 4px 14px hsla(var(--pink), .5);
+  }
+  .btn:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* bento grid */
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin: 28px 0;
+    text-align: left;
+  }
+  .bento-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    padding: 20px;
+  }
+  .bento-card.span-2 { grid-column: span 2; }
+  .bento-card h3 { font-size: 17px; margin: 0 0 6px 0; color: #fff; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; }
+  .bento-card p { margin: 0; font-size: 14.5px; }
+
+  /* polaroid */
+  .polaroid-wrap {
+    perspective: 1000px;
+    margin: 28px auto;
+    width: min(280px, 70vw);
+  }
+  .polaroid {
+    background: #fdfdfd;
+    padding: 14px 14px 46px 14px;
+    border-radius: 4px;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+    transform: rotate(-4deg);
+    transition: transform .15s ease-out;
+    transform-style: preserve-3d;
+  }
+  .polaroid img {
+    width: 100%;
+    display: block;
+    border-radius: 2px;
+    aspect-ratio: 4/5;
+    object-fit: cover;
+    background: #333;
+  }
+  .polaroid-caption {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: #333;
+    text-align: center;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+
+  #final-message {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .stagger-item { opacity: 0; transform: translateY(16px); }
+
+  @media (max-width: 480px) {
+    .bento { grid-template-columns: 1fr; }
+    .bento-card.span-2 { grid-column: span 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .aurora-blob, .beat { animation: none !important; }
+  }
+
+  #music-btn {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 30;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(20, 14, 18, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: #fff;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 24px -8px rgba(0,0,0,0.5);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  #music-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 24px hsla(var(--pink), .6);
+  }
+  #music-btn.playing { animation: musicPulse 1.6s ease-in-out infinite; }
+  @keyframes musicPulse {
+    0%, 100% { box-shadow: 0 0 0px hsla(var(--pink), .5); }
+    50% { box-shadow: 0 0 18px hsla(var(--pink), .6); }
+  }
+  #music-hint {
+    position: fixed;
+    top: 76px;
+    right: 24px;
+    z-index: 30;
+    font-size: 12px;
+    color: #e6e1e6;
+    opacity: 0;
+    background: rgba(20,14,18,0.6);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 6px 10px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    pointer-events: none;
+    transition: opacity .3s ease;
+    white-space: nowrap;
+  }
+  #music-hint.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="bg-aurora">
+  <div class="aurora-blob blob-1"></div>
+  <div class="aurora-blob blob-2"></div>
+  <div class="aurora-blob blob-3"></div>
+  <div class="aurora-blob blob-4"></div>
+</div>
+
+<canvas id="hearts-canvas"></canvas>
+
+<div id="progress-wrap"><div id="progress-bar"></div></div>
+
+<audio id="bgm" src="zbgm.mp3" loop preload="auto"></audio>
+<button id="music-btn" aria-label="Toggle background music">🎵</button>
+<div id="music-hint">Tap for music</div>
+
+<div id="app">
+
+  <!-- STEP 1 -->
+  <div class="step active" data-step="1">
+    <div class="card">
+      <div class="stagger-item icon-emoji beat">❤️</div>
+      <h1 class="stagger-item font-display grad-text text-4xl md:text-5xl mt-6 mb-4">Hey Beautiful,</h1>
+      <p class="stagger-item body-text text-lg mb-8">I built a little world for you, just to bring a smile to your face on your special day.</p>
+      <button class="stagger-item btn" onclick="nextStep(1)">Let's Begin</button>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step" data-step="2">
+    <div class="card">
+      <div class="stagger-item icon-emoji">🎉</div>
+      <h1 class="stagger-item font-display grad-text text-4xl md:text-5xl mt-6 mb-4">Happy Birthday!</h1>
+      <p class="stagger-item body-text text-lg mb-8">Another year of you making the world brighter. Your existence is a gift, and I'm so lucky to witness it.</p>
+      <button class="stagger-item btn" onclick="nextStep(2)">There's more...</button>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step" data-step="3">
+    <div class="card">
+      <h2 class="stagger-item font-display grad-text text-3xl md:text-4xl mb-2">A Few Things I Adore About You</h2>
+      <div class="bento">
+        <div class="bento-card span-2 stagger-item">
+          <h3>✨ Your Unmatched Kindness</h3>
+          <p class="body-text">The genuine warmth you show to everyone is something truly rare and beautiful.</p>
+        </div>
+        <div class="bento-card stagger-item">
+          <h3>😊 That Smile</h3>
+          <p class="body-text">It's a work of art.</p>
+        </div>
+        <div class="bento-card span-2 stagger-item">
+          <h3>🌟 Your Radiant Spirit</h3>
+          <p class="body-text">Your passion for life is infectious. Being around you makes everything feel more exciting and possible.</p>
+        </div>
+      </div>
+      <button class="stagger-item btn mt-2" onclick="nextStep(3)">Remember this?</button>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step" data-step="4">
+    <div class="card">
+      <h1 class="stagger-item font-display grad-text text-3xl md:text-4xl mb-4">That One Time...</h1>
+      <div class="polaroid-wrap stagger-item">
+        <div class="polaroid" id="polaroid">
+          <img src="123.png" alt="A favorite shared memory" onerror="this.style.display='none'; this.parentElement.style.aspectRatio='4/5'; this.parentElement.style.background='#eee';">
+          <div class="polaroid-caption">Our favorite memory.</div>
+        </div>
+      </div>
+      <p class="stagger-item body-text text-lg my-6">Every moment with you feels like a scene from a movie I'd watch on repeat.</p>
+      <button class="stagger-item btn" onclick="nextStep(4)">One last thing...</button>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step" data-step="5">
+    <div class="card">
+      <div class="stagger-item icon-emoji">🎂</div>
+      <h1 class="stagger-item font-display grad-text text-4xl md:text-5xl mt-6 mb-4">My Wish For You</h1>
+      <p class="stagger-item body-text text-lg mb-6">May the next year bring you all the love, success, and pure happiness you so rightfully deserve. May your dreams soar higher than ever.</p>
+      <button class="stagger-item btn" id="celebrate-btn" onclick="celebrate()">Celebrate!</button>
+      <h2 id="final-message" class="font-display grad-text text-3xl md:text-4xl mt-8">Happy Birthday! ❤️</h2>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ---------- Background music ---------- */
+const bgm = document.getElementById('bgm');
+const musicBtn = document.getElementById('music-btn');
+const musicHint = document.getElementById('music-hint');
+let musicStarted = false;
+
+function setPlayingUI(isPlaying){
+  musicBtn.classList.toggle('playing', isPlaying);
+  musicBtn.textContent = isPlaying ? '🔊' : '🎵';
+  musicHint.classList.remove('show');
+}
+
+function tryAutoplay(){
+  const p = bgm.play();
+  if (p !== undefined){
+    p.then(() => {
+      musicStarted = true;
+      setPlayingUI(true);
+    }).catch(() => {
+      // Autoplay blocked by the browser — wait for a tap.
+      musicStarted = false;
+      setPlayingUI(false);
+      musicHint.classList.add('show');
+      setTimeout(() => musicHint.classList.remove('show'), 3500);
+    });
+  }
+}
+
+musicBtn.addEventListener('click', () => {
+  if (bgm.paused){
+    bgm.play().then(() => setPlayingUI(true)).catch(() => {});
+  } else {
+    bgm.pause();
+    setPlayingUI(false);
+  }
+});
+
+// Also catch the very first tap/click anywhere on the page as a chance to start audio.
+function startOnFirstInteraction(){
+  if (!musicStarted && bgm.paused){
+    bgm.play().then(() => {
+      musicStarted = true;
+      setPlayingUI(true);
+    }).catch(() => {});
+  }
+  document.removeEventListener('click', startOnFirstInteraction);
+}
+document.addEventListener('click', startOnFirstInteraction);
+
+window.addEventListener('DOMContentLoaded', tryAutoplay);
+
+/* ---------- Step navigation ---------- */
+const totalSteps = 5;
+let currentStep = 1;
+
+function animateIn(stepEl){
+  const items = stepEl.querySelectorAll('.stagger-item');
+  gsap.fromTo(stepEl, { opacity: 0, y: 40, scale: .96 }, { opacity: 1, y: 0, scale: 1, duration: .7, ease: 'power3.out' });
+  gsap.fromTo(items, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .55, stagger: .12, delay: .15, ease: 'power2.out' });
+}
+
+function goToStep(n){
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  const el = document.querySelector('.step[data-step="'+n+'"]');
+  el.classList.add('active');
+  animateIn(el);
+  document.getElementById('progress-bar').style.width = (n/totalSteps*100) + '%';
+  currentStep = n;
+}
+
+function nextStep(fromStep){
+  const el = document.querySelector('.step[data-step="'+fromStep+'"] .card');
+  gsap.to(el, {
+    opacity: 0, y: -20, scale: .95, duration: .4, ease: 'power2.in',
+    onComplete: () => {
+      gsap.set(el, { clearProps: 'all' });
+      goToStep(fromStep + 1);
+    }
+  });
+}
+
+// init progress + first stagger
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('progress-bar').style.width = (1/totalSteps*100) + '%';
+  animateIn(document.querySelector('.step[data-step="1"]'));
+});
+
+/* ---------- Polaroid tilt-toward-cursor ---------- */
+const polaroid = document.getElementById('polaroid');
+if (polaroid) {
+  const wrap = polaroid.parentElement;
+  wrap.addEventListener('mousemove', (e) => {
+    const rect = wrap.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    polaroid.style.transform = `rotate(${-4 + x*10}deg) rotateX(${-y*12}deg) rotateY(${x*12}deg)`;
+  });
+  wrap.addEventListener('mouseleave', () => {
+    polaroid.style.transform = 'rotate(-4deg)';
+  });
+}
+
+/* ---------- Three.js floating hearts ---------- */
+let scene, camera, renderer, hearts = [];
+let heartsFinaleTriggered = false;
+
+function heartShape(){
+  const shape = new THREE.Shape();
+  const x = 0, y = 0;
+  shape.moveTo(x, y + 0.5);
+  shape.bezierCurveTo(x, y + 0.5, x - 0.5, y, x - 0.5, y - 0.3);
+  shape.bezierCurveTo(x - 0.5, y - 0.7, x - 0.1, y - 0.9, x, y - 1.2);
+  shape.bezierCurveTo(x + 0.1, y - 0.9, x + 0.5, y - 0.7, x + 0.5, y - 0.3);
+  shape.bezierCurveTo(x + 0.5, y, x, y + 0.5, x, y + 0.5);
+  return shape;
+}
+
+function initHearts(){
+  const canvas = document.getElementById('hearts-canvas');
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.z = 12;
+
+  renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const light = new THREE.PointLight(0xffffff, 1.2, 100);
+  light.position.set(5, 5, 10);
+  scene.add(light);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+
+  const geo = new THREE.ExtrudeGeometry(heartShape(), { depth: 0.25, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2, curveSegments: 12 });
+  geo.center();
+
+  const colors = [0xff4d79, 0xff7aa8, 0xe0295e, 0xff9dbf, 0xd6336c];
+  const count = 22;
+
+  for (let i = 0; i < count; i++){
+    const mat = new THREE.MeshStandardMaterial({
+      color: colors[i % colors.length],
+      roughness: 0.35,
+      metalness: 0.15,
+      emissive: colors[i % colors.length],
+      emissiveIntensity: 0.08
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    const scale = 0.4 + Math.random() * 0.7;
+    mesh.scale.set(scale, scale, scale);
+    mesh.position.set((Math.random()-0.5)*20, (Math.random()-0.5)*14, (Math.random()-0.5)*10 - 4);
+    mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI*0.3);
+    mesh.userData = {
+      baseX: mesh.position.x,
+      baseY: mesh.position.y,
+      speed: 0.4 + Math.random()*0.6,
+      phase: Math.random()*Math.PI*2,
+      rotSpeed: (Math.random()-0.5)*0.005,
+      finale: false
+    };
+    scene.add(mesh);
+    hearts.push(mesh);
+  }
+
+  window.addEventListener('resize', onResize);
+  animateHearts();
+}
+
+function onResize(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+const clock = new THREE.Clock();
+function animateHearts(){
+  requestAnimationFrame(animateHearts);
+  const t = clock.getElapsedTime();
+
+  hearts.forEach(h => {
+    const d = h.userData;
+    if (!d.finale) {
+      h.position.y = d.baseY + Math.sin(t*d.speed + d.phase) * 0.6;
+      h.position.x = d.baseX + Math.sin(t*d.speed*0.5 + d.phase) * 0.3;
+      h.rotation.x += d.rotSpeed;
+      h.rotation.y += d.rotSpeed*1.3;
+    } else {
+      h.position.y += d.finaleSpeed;
+      h.position.x += d.finaleDriftX;
+      h.rotation.z += 0.04;
+      h.material.opacity -= 0.012;
+      h.material.transparent = true;
+      if (h.material.opacity <= 0) h.visible = false;
+    }
+  });
+
+  renderer.render(scene, camera);
+}
+
+function triggerHeartsFinale(){
+  if (heartsFinaleTriggered) return;
+  heartsFinaleTriggered = true;
+  hearts.forEach((h, i) => {
+    const angle = (i / hearts.length) * Math.PI * 2;
+    h.userData.finale = true;
+    h.userData.finaleSpeed = 0.08 + Math.random()*0.05;
+    h.userData.finaleDriftX = Math.cos(angle) * 0.06;
+  });
+}
+
+initHearts();
+
+/* ---------- Grand finale ---------- */
+function celebrate(){
+  const btn = document.getElementById('celebrate-btn');
+  btn.disabled = true;
+  gsap.to(btn, { opacity: 0, duration: .4 });
+
+  gsap.to('#final-message', { opacity: 1, y: 0, duration: .9, delay: .3, ease: 'power3.out' });
+
+  triggerHeartsFinale();
+
+  // corner bursts
+  const end = Date.now() + 900;
+  (function cornerBurst(){
+    confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0, y: 1 }, startVelocity: 55 });
+    confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1, y: 1 }, startVelocity: 55 });
+    if (Date.now() < end) requestAnimationFrame(cornerBurst);
+  })();
+
+  // continuous shower for ~5s
+  const emojiShapes = ['❤️','💖','✨'].map(e =>
+    confetti.shapeFromText ? confetti.shapeFromText({ text: e, scalar: 2 }) : null
+  ).filter(Boolean);
+
+  const showerEnd = Date.now() + 5000;
+  (function shower(){
+    confetti({
+      particleCount: 3,
+      startVelocity: 18,
+      spread: 70,
+      ticks: 200,
+      origin: { x: Math.random(), y: -0.05 },
+      colors: ['#ff4d79','#ff9dbf','#ffd166','#c77dff','#ffffff']
+    });
+    if (emojiShapes.length){
+      confetti({
+        particleCount: 1,
+        startVelocity: 12,
+        spread: 60,
+        ticks: 220,
+        scalar: 2.4,
+        shapes: emojiShapes,
+        origin: { x: Math.random(), y: -0.05 }
+      });
+    }
+    if (Date.now() < showerEnd) setTimeout(shower, 140);
+  })();
+}
+</script>
+
+</body>
+</html>
